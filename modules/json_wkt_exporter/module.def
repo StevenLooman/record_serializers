@@ -1,0 +1,9 @@
+json_wkt_exporter	1
+
+description
+	JSON/WKT exporter to export a ds_collection or a subset of it
+end
+
+requires
+	geometry_wkt_serialization	1
+end

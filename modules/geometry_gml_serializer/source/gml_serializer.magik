@@ -1,0 +1,234 @@
+def_slotted_exemplar(
+	:gml_serializer,
+	{
+		{:xml_output_stream, _unset, :readable},
+		{:epsg_number, _unset, :readable},
+		{:coordinate_system_transform, _unset, :readable},
+		{:xml_namespaces, _unset, :readable}
+	},
+	{})
+$
+
+_pragma(classify_level=basic, topic={gml_serializer})
+_method gml_serializer.new(p_xml_output_stream, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_return _clone.init(p_xml_output_stream, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.init(p_xml_output_stream, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.xml_output_stream << p_xml_output_stream
+	.coordinate_system_transform << transform.new_converting_cs_to_cs(p_source_coordinate_system, p_target_coordinate_system)
+	.epsg_number << write_string("EPSG:", p_epsg_number)
+	.xml_namespaces << hash_table.new_with(
+				   :gml, "http://www.opengis.net/gml"
+				      )
+	_return _self
+_endmethod
+$
+
+_pragma(classify_level=basic, topic={gml_serializer})
+_private _method gml_serializer.xml_start_element_namespace(p_namespace_key, p_name, _gather attributes)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_namespace_url << _self.xml_namespaces[p_namespace_key]
+	_local l_nsq << _self.xml_output_stream.nsq(l_namespace_url, p_name)
+	_self.xml_output_stream.start_element(l_nsq, _scatter attributes)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_method gml_serializer.export_geometry(p_geometry)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_transformed_geometry << p_geometry.transformed(.coordinate_system_transform)
+	_local l_geometry_type << p_geometry.geom_type
+	_if l_geometry_type _is :point _orif
+	    l_geometry_type _is :simple_point
+	_then
+		_self.export_point_geometry(l_transformed_geometry)
+	_elif l_geometry_type _is :chain _orif
+	      l_geometry_type _is :simple_chain
+	_then
+		_self.export_chain_geometry(l_transformed_geometry)
+	_elif l_geometry_type _is :area _orif
+	      l_geometry_type _is :simple_area
+	_then
+		_self.export_area_geometry(l_transformed_geometry)
+	_endif
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_point_geometry(p_point)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_epsg_number << _self.epsg_number
+	_self.xml_start_element_namespace(:gml, "Point", "srsName", l_epsg_number)
+	_self.xml_start_element_namespace(:gml, "coordinates")
+	
+	_self.export_sectors(p_point.sectors)
+	
+	_self.xml_output_stream.end_element() # gml:coordinates
+	_self.xml_output_stream.end_element() # gml:Point
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_chain_geometry(p_chain)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_epsg_number << _self.epsg_number
+	_self.xml_start_element_namespace(:gml, "LineString", "srsName", l_epsg_number)
+	_self.xml_start_element_namespace(:gml, "coordinates")
+	
+	_self.export_sectors(p_chain.sectors)
+	
+	_self.xml_output_stream.end_element() # coordinates
+	_self.xml_output_stream.end_element() # LineString	 
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_area_geometry(p_area)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_epsg_number << _self.epsg_number
+
+	_if p_area.npolygons > 1
+	_then
+		_self.xml_start_element_namespace(:gml, "MultiPolygon")
+		
+		_for i_polygon _over p_area.polygons.fast_elements()
+		_loop
+			_self.xml_start_element_namespace(:gml, "polygonMember")
+			
+			_self.export_polygon(i_polygon)
+
+			_self.xml_output_stream.end_element()
+		_endloop
+
+		_self.xml_output_stream.end_element() # MultiPolygon
+	_else
+		_local l_polygons << p_area.polygons
+		_local l_polygon << l_polygons.an_element()
+		_self.export_polygon(l_polygon)
+	_endif
+_endmethod
+$
+	
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_polygon(p_polygon)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_epsg_number << _self.epsg_number
+	_self.xml_start_element_namespace(:gml, "Polygon", "srsName", l_epsg_number)
+	
+	_local l_outer_region << p_polygon.region
+	_self.xml_start_element_namespace(:gml, "outerBoundaryIs")
+	_self.xml_start_element_namespace(:gml, "LinearRing")
+	_self.xml_start_element_namespace(:gml, "coordinates")
+	
+	_self.export_sectors(l_outer_region.sectors)
+	
+	_self.xml_output_stream.end_element() # coordinates
+	_self.xml_output_stream.end_element() # LinearRing
+	_self.xml_output_stream.end_element() # outerBoundaryIs
+	 
+	
+	_for i_inner _over p_polygon.inner_regions()
+	_loop
+		_self.xml_start_element_namespace(:gml, "innerBoundaryIs")
+		_self.xml_start_element_namespace(:gml, "LinearRing")
+		_self.xml_start_element_namespace(:gml, "coordinates")
+		
+		_self.export_sectors(i_inner.sectors)
+		
+		_self.xml_output_stream.end_element() # coordinates
+		_self.xml_output_stream.end_element() # LinearRing
+		_self.xml_output_stream.end_element() # innerBoundaryIs
+	_endloop
+	
+	_self.xml_output_stream.end_element() # Polygon	 
+_endmethod
+$
+
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_sectors(p_sector_rope)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_for i_sector _over p_sector_rope.fast_elements()
+	_loop
+		_self.export_sector(i_sector)
+	_endloop
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_sector(p_sector)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_for i_coordinate _over p_sector.fast_elements()
+	_loop
+		_self.export_coordinate(i_coordinate)
+	_endloop
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={gml_serializer})
+_private _method gml_serializer.export_coordinate(p_coordinate)
+	#  Initial Author  : steven.looman, Date : 2011-11-22
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_coordinate_string << write_string(p_coordinate.x, ",", p_coordinate.y, " ")
+	_self.xml_output_stream.write(l_coordinate_string)
+_endmethod
+$

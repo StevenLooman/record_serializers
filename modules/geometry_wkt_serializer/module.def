@@ -1,0 +1,6 @@
+geometry_wkt_serializer	1
+
+description
+	Serializer for Smallworld geometry objects to WKT
+end
+

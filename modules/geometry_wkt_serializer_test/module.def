@@ -1,0 +1,25 @@
+geometry_wkt_serializer_test	1
+
+description
+	Tests the geometry_wkt_serializer module
+end
+
+requires
+	simple_dataset
+	munit_base
+	geometry_wkt_serializer	1
+end
+
+tests_modules
+	geometry_wkt_serializer
+end
+
+test
+	name		geometry_wkt_serializer_test
+	topics		munit
+	framework	munit
+	args		geometry_wkt_serializer_test
+end
+
+
+hidden

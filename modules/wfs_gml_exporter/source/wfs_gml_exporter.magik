@@ -1,0 +1,195 @@
+def_slotted_exemplar(
+	:wfs_gml_exporter,
+	{
+		{:collections, _unset, :readable},
+		{:xml_output_stream, _unset, :readable},
+		{:xml_namespaces, _unset, :readable},
+		{:gml_serializer, _unset, :readable}
+	},
+	{})
+$
+
+_pragma(classify_level=basic, topic={wfs_gml_exporter})
+_method wfs_gml_exporter.new(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_return _clone.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.xml_output_stream << xml_output_stream.new_file(p_filename)
+	.collections << p_collections
+	.gml_serializer << gml_serializer.new(_self.xml_output_stream, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	.xml_namespaces << hash_table.new_with(
+				   :gml, "http://www.opengis.net/gml",
+				   :wfs, "http://www.opengis.net/wfs",
+				   :ogc, "http://www.opengis.net/ogc"
+				      )
+	_return _self
+_endmethod
+$
+
+_pragma(classify_level=basic, topic={wfs_gml_exporter})
+_method wfs_gml_exporter.run()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_dynamic !print_float_precision! << 10
+	
+	_self.xml_output_stream.write_prolog()
+	_self.define_namespaces()
+	_self.xml_start_element_namespace(:wfs, "FeatureCollection")
+
+	_for i_collection _over .collections.fast_elements()
+	_loop
+		_self.export_collection(i_collection)
+	_endloop
+	
+	_self.xml_output_stream.end_element() # wfs:FeatureCollection 
+	_self.xml_output_stream.close()
+_endmethod
+$
+
+_private _method wfs_gml_exporter.define_namespaces()
+	_local l_namespaces << rope.new()
+	_for i_key, i_url _over _self.xml_namespaces.fast_keys_and_elements()
+	_loop
+		l_namespaces.add_last(i_url)
+		l_namespaces.add_last(i_key)
+	_endloop
+	_self.xml_output_stream.define_namespaces(_scatter l_namespaces)
+_endmethod
+$
+
+_pragma(classify_level=basic, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.xml_start_element_namespace(p_namespace_key, p_name, _gather attributes)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_namespace_url << _self.xml_namespaces[p_namespace_key]
+	_local l_nsq << _self.xml_output_stream.nsq(l_namespace_url, p_name)
+	_self.xml_output_stream.start_element(l_nsq, _scatter attributes)
+_endmethod
+$
+
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_collection(p_collection)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_for i_record _over p_collection.fast_elements()
+	_loop
+		_local l_source_collection << i_record.source_collection
+		_local l_source_collection_name << l_source_collection.name
+		_local l_record_id << _self.key_value_as_string(i_record)
+		
+		_self.xml_start_element_namespace(:gml, "featureMember")
+
+		_self.xml_output_stream.start_element(l_source_collection_name, "fid", l_record_id)
+		_for i_field _over i_record.visible_fields.fast_elements()
+		_loop
+			_self.export_field(i_record, i_field)
+			_self.xml_output_stream.flush()
+		_endloop
+		_self.xml_output_stream.end_element() # source collection name
+		_self.xml_output_stream.end_element() # gml:featureMember
+	_endloop
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.key_value_as_string(p_record)
+	#  Initial Author  : steven.looman, Date : 2011-11-22
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_key_string << ""
+	_local l_key << p_record.key_value()
+	_for i_key_value _over l_key.fast_elements()
+	_loop
+		l_key_string << write_string(l_key_string, i_key_value, ",")
+	_endloop
+	_if _not l_key_string.empty?
+	_then
+		_local l_total_size << l_key_string.size
+		l_key_string << l_key_string.subseq(1, l_total_size - 1)
+	_endif
+	_return l_key_string
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_field(p_record, p_field)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_field_value << p_record.perform(p_field.name)
+	_if l_field_value _is _unset
+	_then
+		# nothing
+	_elif p_field.is_geometry?
+	_then
+		_self.export_geometry_field(p_field, l_field_value)
+	_elif p_field.is_physical?
+	_then
+		_self.export_physical_field(p_field, l_field_value)
+	_endif
+	# XXX: TODO: is_join?
+	# XXX: TODO: is_derived?
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_geometry_field(p_field, p_field_value)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.xml_output_stream.start_element(p_field.name)
+	_self.gml_serializer.export_geometry(p_field_value)
+	_self.xml_output_stream.end_element() # field.name
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_physical_field(p_field, p_field_value)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.xml_output_stream.start_element(p_field.name)
+	_self.xml_output_stream.write_cdata(write_string(p_field_value))
+	_self.xml_output_stream.end_element() # field.name
+_endmethod
+$

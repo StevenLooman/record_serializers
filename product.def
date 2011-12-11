@@ -1,0 +1,11 @@
+record_serializers layered_product
+
+title
+	Various record serializers to common text formats
+end
+
+description
+	Various record serializers to common text formats
+	E.g., exports given ds_collections to GML.
+end
+

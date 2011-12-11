@@ -1,0 +1,6 @@
+geometry_gml_serializer	1
+
+description
+	Serializer for Smallworld geometry objects to GML
+end
+

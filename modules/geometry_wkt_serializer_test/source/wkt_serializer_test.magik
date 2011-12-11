@@ -1,0 +1,110 @@
+#% text_encoding = iso8859_1
+_package user
+$
+
+def_slotted_exemplar(
+	:wkt_serializer_test,
+	{},
+	{
+		:test_case
+	})
+$
+
+_pragma(classify_level=restricted)
+_private _method wkt_serializer_test.create_dataset()
+	_local l_config_spec << property_list.new_with(
+					:test_object, {
+								   property_list.new_with(
+									   :name, :key_field,
+									   :type, :ds_int,
+									   :key?, _true),
+								   property_list.new_with(
+									   :name, :point_geom,
+									   :type, :simple_point,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :chain_geom,
+									   :type, :simple_chain,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :area_geom,
+									   :type, :simple_area,
+									   :key?, _false)
+					}
+					      )
+	_return simple_dataset.new(:test_dataset, l_config_spec)
+_endmethod
+$
+
+_private _method wkt_serializer_test.dataset_with_test_data()
+	_local l_dataset << _self.create_dataset()
+	_local l_collection << l_dataset.collection(:test_object)
+	 
+	_local l_record << l_collection.insert({1})
+	
+	_local l_point_geom << uds_simple_point.new_at(l_collection.field(:point_geom), coordinate.new(0, 0))
+	_local l_chain_geom << uds_simple_chain.new_with(l_collection.field(:chain_geom), sector.new_from({coordinate.new(0, 0), coordinate.new(1, 1)}))
+	_local l_area_geom << uds_simple_area.new_with(l_collection.field(:area_geom), l_chain_geom.buffer(1).sectors)
+	
+	l_record.set_geometry(l_point_geom)
+	l_record.set_geometry(l_chain_geom)
+	l_record.set_geometry(l_area_geom)
+	 
+	_return l_dataset
+_endmethod
+$
+
+_private _method wkt_serializer_test.create_wkt_serializer(_optional p_source_cs, p_dest_cs)
+	_local l_source_cs << p_source_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_dest_cs << p_dest_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+
+	_return wkt_serializer.new(l_source_cs, l_dest_cs)
+_endmethod
+$
+
+
+
+_method wkt_serializer_test.test_geometry_point_field_export()
+	_dynamic !print_float_precision! << 4
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_point_geom << l_record.point_geom
+	_local l_serializer << _self.create_wkt_serializer()
+	
+	_local l_result << l_serializer.export_geometry(l_point_geom)
+	
+	_self.assert_equals(l_result, "POINT (0.000 0.000)")
+_endmethod
+$
+
+_method wkt_serializer_test.test_geometry_chain_field_export()
+	_dynamic !print_float_precision! << 4
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_chain_geom << l_record.chain_geom
+	_local l_serializer << _self.create_wkt_serializer()
+	
+	_local l_result << l_serializer.export_geometry(l_chain_geom)
+	
+	_self.assert_equals(l_result, "LINESTRING (0.000 0.000, 1.000 1.000)")
+_endmethod
+$
+
+_method wkt_serializer_test.test_geometry_area_field_export()
+	_dynamic !print_float_precision! << 4
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_area_geom << l_record.area_geom
+	_local l_serializer << _self.create_wkt_serializer()
+	
+	_local l_result << l_serializer.export_geometry(l_area_geom)
+	
+	_self.assert_equals(l_result, "POLYGON ((-1.000 -1.000, -1.000 1.000, 0.000 2.000, 2.000 2.000, 2.000 0.000, 1.000 -1.000, -1.000 -1.000))")
+_endmethod
+$

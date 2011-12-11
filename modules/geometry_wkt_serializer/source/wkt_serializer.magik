@@ -1,0 +1,191 @@
+def_slotted_exemplar(
+	:wkt_serializer,
+	{
+		{:coordinate_system_transform, _unset, :readable},
+		{:output_buffer, _unset, :readable}
+	},
+	{})
+$
+
+_pragma(classify_level=basic, topic={wkt_serializer})
+_method wkt_serializer.new(p_source_coordinate_system, p_target_coordinate_system)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_return _clone.init(p_source_coordinate_system, p_target_coordinate_system)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.init(p_source_coordinate_system, p_target_coordinate_system)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.coordinate_system_transform << transform.new_converting_cs_to_cs(p_source_coordinate_system, p_target_coordinate_system)
+	_return _self
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_method wkt_serializer.export_geometry(p_geometry)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_buffer << internal_text_output_stream.new()
+	_local l_transformed_geometry << p_geometry.transformed(.coordinate_system_transform)
+	_local l_geometry_type << p_geometry.geom_type
+	_if l_geometry_type _is :point _orif
+	    l_geometry_type _is :simple_point
+	_then
+		_self.export_point_geometry(l_transformed_geometry)
+	_elif l_geometry_type _is :chain _orif
+	      l_geometry_type _is :simple_chain
+	_then
+		_self.export_chain_geometry(l_transformed_geometry)
+	_elif l_geometry_type _is :area _orif
+	      l_geometry_type _is :simple_area
+	_then
+		_self.export_area_geometry(l_transformed_geometry)
+	_endif
+
+	_local l_wkt << .output_buffer.string
+	.output_buffer << _unset
+	_return l_wkt
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_point_geometry(p_point)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_buffer.write("POINT ")
+	_self.export_sectors(p_point.sectors)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_chain_geometry(p_chain)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_buffer.write("LINESTRING ")
+	_self.export_sectors(p_chain.sectors)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_area_geometry(p_area)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_if p_area.npolygons > 1
+	_then
+		.output_buffer.write("MULTIPOLYGON ")
+		.output_buffer.write("(")
+		_for i_polygon _over p_area.polygons.fast_elements()
+		_loop
+			_self.export_polygon(i_polygon)
+		_endloop
+		.output_buffer.write(")")
+	_else
+		.output_buffer.write("POLYGON ")
+		_local l_polygons << p_area.polygons
+		_local l_polygon << l_polygons.an_element()
+		_self.export_polygon(l_polygon)
+	_endif
+_endmethod
+$
+	
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_polygon(p_polygon)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_buffer.write("(")
+	
+	_local l_outer_region << p_polygon.region
+	_self.export_sectors(l_outer_region.sectors) 
+	
+	_for i_inner _over p_polygon.inner_regions()
+	_loop
+		.output_buffer.write(",")
+		_self.export_sectors(i_inner.sectors)
+	_endloop
+	
+	.output_buffer.write(")")
+_endmethod
+$
+
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_sectors(p_sector_rope)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_buffer.write("(")
+	_for i_sector _over p_sector_rope.fast_elements()
+	_loop
+		_self.export_sector(i_sector)
+	_endloop
+	.output_buffer.write(")")
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_sector(p_sector)
+	#  Initial Author  : steven.looman, Date : 2011-11-24
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_local l_coordinates << ""
+	_for i_coordinate _over p_sector.fast_elements()
+	_loop
+		_local l_string << _self.export_coordinate(i_coordinate)
+		l_coordinates << write_string(l_coordinates, l_string)
+	_endloop
+	
+	_local l_length << l_coordinates.size
+	l_coordinates << l_coordinates.subseq(1, l_length - 2)
+	
+	.output_buffer.write(l_coordinates)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wkt_serializer})
+_private _method wkt_serializer.export_coordinate(p_coordinate)
+	#  Initial Author  : steven.looman, Date : 2011-11-22
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_return write_string(p_coordinate.x, " ", p_coordinate.y, ", ")
+_endmethod
+$

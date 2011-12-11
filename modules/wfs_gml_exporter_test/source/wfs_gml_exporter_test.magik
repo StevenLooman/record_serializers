@@ -1,0 +1,273 @@
+#% text_encoding = iso8859_1
+_package user
+$
+
+def_slotted_exemplar(
+	:wfs_gml_exporter_test,
+	{},
+	{
+		:test_case
+	})
+$
+
+_pragma(classify_level=restricted)
+_private _method wfs_gml_exporter_test.create_dataset()
+	_local l_config_spec << property_list.new_with(
+					:test_object, {
+								   property_list.new_with(
+									   :name, :key_field,
+									   :type, :ds_int,
+									   :key?, _true),
+								   property_list.new_with(
+									   :name, :int_field,
+									   :type, :ds_int,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :string_field,
+									   :type, :ds_string,
+									   :size, 4096,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :point_geom,
+									   :type, :simple_point,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :chain_geom,
+									   :type, :simple_chain,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :area_geom,
+									   :type, :simple_area,
+									   :key?, _false)
+					}
+					      )
+	_return simple_dataset.new(:test_dataset, l_config_spec)
+_endmethod
+$
+
+_private _method wfs_gml_exporter_test.dataset_with_test_data()
+	_local l_dataset << _self.create_dataset()
+	_local l_collection << l_dataset.collection(:test_object)
+	 
+	_local l_record << l_collection.insert({1, 100, "test_string"})
+	
+	_local l_point_geom << uds_simple_point.new_at(l_collection.field(:point_geom), coordinate.new(0, 0))
+	_local l_chain_geom << uds_simple_chain.new_with(l_collection.field(:chain_geom), sector.new_from({coordinate.new(0, 0), coordinate.new(1, 1)}))
+	_local l_area_geom << uds_simple_area.new_with(l_collection.field(:area_geom), l_chain_geom.buffer(1).sectors)
+	
+	l_record.set_geometry(l_point_geom)
+	l_record.set_geometry(l_chain_geom)
+	l_record.set_geometry(l_area_geom)
+	 
+	_return l_dataset
+_endmethod
+$
+
+_private _method wfs_gml_exporter_test.run_gml_export(p_output_file, p_collections, _optional p_source_cs, p_dest_cs, p_epsg_id)
+	_local l_source_cs << p_source_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_dest_cs << p_dest_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_epsg_id << p_epsg_id.default(4326)
+	
+	_local l_exporter << wfs_gml_exporter.new(p_output_file, p_collections, l_source_cs, l_dest_cs, l_epsg_id)
+	_protect
+		l_exporter.run()
+	_protection
+		l_exporter.sys!slot(:xml_output_stream).close() # end gracefully
+	_endprotect
+_endmethod
+$
+
+_private _method wfs_gml_exporter_test.get_output_file_path(p_test_name)
+	_local l_temp_dir << system.getenv("TEMP")
+	_local l_file << write_string(_self.class_name, "_", p_test_name, ".gml")
+	_local l_output_file << system.pathname_down(l_temp_dir, l_file)
+	_return l_output_file
+_endmethod
+$
+
+_private _iter _method wfs_gml_exporter_test.record_elements(p_xml)
+	_local l_root_element << p_xml.elements[1]
+	_for i_feature_member_element _over l_root_element.elements.fast_elements()
+	_loop
+		_local l_record_element << i_feature_member_element.elements[1]
+		_loopbody(l_record_element)
+	_endloop
+_endmethod
+$
+
+_private _iter _method wfs_gml_exporter_test.field_elements_of_record(p_xml, p_record_type)
+	_for i_record_element _over _self.record_elements(p_xml)
+	_loop
+		_if i_record_element.type _is p_record_type
+		_then
+			_for i_field_element _over i_record_element.elements.fast_elements()
+			_loop
+				_loopbody(i_field_element)
+			_endloop
+		_endif
+	_endloop
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_fid_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_fid_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_for i_record_element _over _self.record_elements(l_xml)
+	_loop
+		_local l_attributes << i_record_element.attributes
+		_self.assert_true(l_attributes.includes_key?(:fid)) # ensure record-element contains fid-attribute
+	_endloop
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_physical_key_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_key_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :key_field
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+		_local l_field_value << i_field_element.elements[1]
+		_self.assert_not_unset(l_field_value)
+	_endloop
+	
+	_self.assert_true(l_field_found?) # ensure field is found
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_physical_int_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_int_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :int_field
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+		_local l_field_value << i_field_element.elements[1]
+		_local l_int << l_field_value.as_number()
+		
+		_self.assert_not_unset(l_int) # ensure this is parsable as an integer
+		_self.assert_equals(l_field_value, write_string(l_int)) # ensure the parsed int was the complete string
+	_endloop
+	
+	_self.assert_true(l_field_found?) # ensure field is found
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_physical_string_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_string_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :string_field
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+		_local l_field_value << i_field_element.elements[1]
+		_self.assert_not_unset(l_field_value) # ensure there is a value in there (even "")
+	_endloop
+	
+	_self.assert_true(l_field_found?, "Element not found") # ensure field is found
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_geometry_point_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_point_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :point_geom
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+	_endloop
+	
+	_self.assert_true(l_field_found?, "Element not found") # ensure field is found
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_geometry_chain_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_chain_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :chain_geom
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+	_endloop
+	
+	_self.assert_true(l_field_found?, "Element not found") # ensure field is found
+_endmethod
+$
+
+_method wfs_gml_exporter_test.test_geometry_area_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_area_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_gml_export(l_output_file, { l_collection })
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_field_found? << _false
+	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
+	_loop
+		_if i_field_element.type _isnt :area_geom
+		_then
+			_continue
+		_endif
+		
+		l_field_found? << _true
+	_endloop
+	
+	_self.assert_true(l_field_found?, "Element not found") # ensure field is found
+_endmethod
+$

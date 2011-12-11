@@ -1,0 +1,9 @@
+wfs_gml_exporter	1
+
+description
+	WFS/GML exporter to export a ds_collection or a subset of it to WFS/GML
+end
+
+requires
+	geometry_gml_serialization	1
+end

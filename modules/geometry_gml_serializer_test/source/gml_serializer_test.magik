@@ -1,0 +1,154 @@
+#% text_encoding = iso8859_1
+_package user
+$
+
+def_slotted_exemplar(
+	:gml_serializer_test,
+	{},
+	{
+		:test_case
+	})
+$
+
+_pragma(classify_level=restricted)
+_private _method gml_serializer_test.create_dataset()
+	_local l_config_spec << property_list.new_with(
+					:test_object, {
+								   property_list.new_with(
+									   :name, :key_field,
+									   :type, :ds_int,
+									   :key?, _true),
+								   property_list.new_with(
+									   :name, :point_geom,
+									   :type, :simple_point,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :chain_geom,
+									   :type, :simple_chain,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :area_geom,
+									   :type, :simple_area,
+									   :key?, _false)
+					}
+					      )
+	_return simple_dataset.new(:test_dataset, l_config_spec)
+_endmethod
+$
+
+_private _method gml_serializer_test.dataset_with_test_data()
+	_local l_dataset << _self.create_dataset()
+	_local l_collection << l_dataset.collection(:test_object)
+	 
+	_local l_record << l_collection.insert({1})
+	
+	_local l_point_geom << uds_simple_point.new_at(l_collection.field(:point_geom), coordinate.new(0, 0))
+	_local l_chain_geom << uds_simple_chain.new_with(l_collection.field(:chain_geom), sector.new_from({coordinate.new(0, 0), coordinate.new(1, 1)}))
+	_local l_area_geom << uds_simple_area.new_with(l_collection.field(:area_geom), l_chain_geom.buffer(1).sectors)
+	
+	l_record.set_geometry(l_point_geom)
+	l_record.set_geometry(l_chain_geom)
+	l_record.set_geometry(l_area_geom)
+	 
+	_return l_dataset
+_endmethod
+$
+
+_private _method gml_serializer_test.run_gml_export(p_filename, p_geometry, _optional p_source_cs, p_dest_cs, p_epsg_id)
+	_local l_source_cs << p_source_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_dest_cs << p_dest_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_epsg_id << p_epsg_id.default(4326)
+
+	_local l_xml_output_stream << xml_output_stream.new_file(p_filename)
+	l_xml_output_stream.define_namespaces("http://www.opengis.net/gml", :gml)
+	l_xml_output_stream.start_element(:gml_serializer_test)
+	
+	_local l_exporter << gml_serializer.new(l_xml_output_stream, l_source_cs, l_dest_cs, l_epsg_id)
+	l_exporter.export_geometry(p_geometry)
+	
+	l_xml_output_stream.end_element() # gml_serializer_test
+	l_xml_output_stream.close()
+_endmethod
+$
+
+_private _method gml_serializer_test.get_output_file_path(p_test_name)
+	_local l_temp_dir << system.getenv("TEMP")
+	_local l_file << write_string(_self.class_name, "_", p_test_name, ".gml")
+	_local l_output_file << system.pathname_down(l_temp_dir, l_file)
+	_return l_output_file
+_endmethod
+$
+
+
+
+_method gml_serializer_test.test_geometry_point_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_point_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_point_geom << l_record.point_geom
+	_self.run_gml_export(l_output_file, l_point_geom)
+
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_main_element << l_xml.elements[1]
+	_local l_gml_point_element << l_main_element.get_element(:|gml:Point|)
+	_self.assert_not_unset(l_gml_point_element)
+	_self.assert_equals(l_gml_point_element.attributes[:|srsName|], "EPSG:4326")
+
+	_local l_gml_coordinates_element << l_gml_point_element.get_element(:|gml:coordinates|)
+	_self.assert_not_unset(l_gml_coordinates_element)
+	_local l_gml_coordinates << l_gml_coordinates_element.elements[1]
+	_self.assert_equals(l_gml_coordinates, "0.000,0.000")
+_endmethod
+$
+
+_method gml_serializer_test.test_geometry_chain_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_chain_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_point_geom << l_record.chain_geom
+	_self.run_gml_export(l_output_file, l_point_geom)
+
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_main_element << l_xml.elements[1]
+	_local l_gml_chain_element << l_main_element.get_element(:|gml:LineString|)
+	_self.assert_not_unset(l_gml_chain_element)
+	_self.assert_equals(l_gml_chain_element.attributes[:|srsName|], "EPSG:4326")
+
+	_local l_gml_coordinates_element << l_gml_chain_element.get_element(:|gml:coordinates|)
+	_self.assert_not_unset(l_gml_coordinates_element)
+	_local l_gml_coordinates << l_gml_coordinates_element.elements[1]
+	_self.assert_equals(l_gml_coordinates, "0.000,0.000 1.000,1.000")
+_endmethod
+$
+
+_method gml_serializer_test.test_geometry_area_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_area_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_local l_record << l_collection.an_element()
+	_local l_point_geom << l_record.area_geom
+	_self.run_gml_export(l_output_file, l_point_geom)
+
+	
+	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_main_element << l_xml.elements[1]
+	_local l_gml_polygon_element << l_main_element.get_element(:|gml:Polygon|)
+	_self.assert_not_unset(l_gml_polygon_element)
+	_self.assert_equals(l_gml_polygon_element.attributes[:|srsName|], "EPSG:4326")
+
+	_local l_outer_oundary_is_element << l_gml_polygon_element.get_element(:|gml:outerBoundaryIs|)
+	_local l_linear_ring_element << l_outer_oundary_is_element.get_element(:|gml:LinearRing|)
+
+	_local l_gml_coordinates_element << l_linear_ring_element.get_element(:|gml:coordinates|)
+	_self.assert_not_unset(l_gml_coordinates_element)
+	_local l_gml_coordinates << l_gml_coordinates_element.elements[1]
+	_self.assert_equals(l_gml_coordinates, "-1.000,-1.000 -1.000,1.000 0.000,2.000 2.000,2.000 2.000,0.000 1.000,-1.000 -1.000,-1.000")
+_endmethod
+$

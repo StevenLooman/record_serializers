@@ -1,0 +1,166 @@
+#% text_encoding = iso8859_1
+_package user
+$
+
+def_slotted_exemplar(
+	:json_wkt_exporter_test,
+	{},
+	{
+		:test_case
+	})
+$
+
+_pragma(classify_level=restricted)
+_private _method json_wkt_exporter_test.create_dataset()
+	_local l_config_spec << property_list.new_with(
+					:test_object, {
+								   property_list.new_with(
+									   :name, :key_field,
+									   :type, :ds_int,
+									   :key?, _true),
+								   property_list.new_with(
+									   :name, :int_field,
+									   :type, :ds_int,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :string_field,
+									   :type, :ds_string,
+									   :size, 4096,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :point_geom,
+									   :type, :simple_point,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :chain_geom,
+									   :type, :simple_chain,
+									   :key?, _false),
+								   property_list.new_with(
+									   :name, :area_geom,
+									   :type, :simple_area,
+									   :key?, _false)
+					}
+					      )
+	_return simple_dataset.new(:test_dataset, l_config_spec)
+_endmethod
+$
+
+_private _method json_wkt_exporter_test.dataset_with_test_data()
+	_local l_dataset << _self.create_dataset()
+	_local l_collection << l_dataset.collection(:test_object)
+
+	
+	_local l_record << l_collection.insert({1, 100, "test_string"})
+	
+	_local l_point_geom << uds_simple_point.new_at(l_collection.field(:point_geom), coordinate.new(0, 0))
+	_local l_chain_geom << uds_simple_chain.new_with(l_collection.field(:chain_geom), sector.new_from({coordinate.new(0, 0), coordinate.new(1, 1)}))
+	_local l_area_geom << uds_simple_area.new_with(l_collection.field(:area_geom), l_chain_geom.buffer(1).sectors)
+	l_record.set_geometry(l_point_geom)
+	l_record.set_geometry(l_chain_geom)
+	l_record.set_geometry(l_area_geom)
+
+	
+	l_record << l_collection.insert({2, 200, "test_string2"})
+	
+	l_point_geom << uds_simple_point.new_at(l_collection.field(:point_geom), coordinate.new(0, 0))
+	l_chain_geom << uds_simple_chain.new_with(l_collection.field(:chain_geom), sector.new_from({coordinate.new(0, 0), coordinate.new(1, 1)}))
+	l_area_geom << uds_simple_area.new_with(l_collection.field(:area_geom), l_chain_geom.buffer(1).sectors)
+	l_record.set_geometry(l_point_geom)
+	l_record.set_geometry(l_chain_geom)
+	l_record.set_geometry(l_area_geom)
+	
+	_return l_dataset
+_endmethod
+$
+
+_private _method json_wkt_exporter_test.run_json_wkt_export(p_output_file, p_collections, _optional p_source_cs, p_dest_cs, p_epsg_id)
+	_local l_source_cs << p_source_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_dest_cs << p_dest_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
+	_local l_epsg_id << p_epsg_id.default(4326)
+	
+	_local l_exporter << json_wkt_exporter.new(p_output_file, p_collections, l_source_cs, l_dest_cs, l_epsg_id)
+	_protect
+		l_exporter.run()
+	_protection
+		l_exporter.sys!slot(:json_output_stream).close() # end gracefully
+	_endprotect
+_endmethod
+$
+
+_private _method json_wkt_exporter_test.get_output_file_path(p_test_name)
+	_local l_temp_dir << system.getenv("TEMP")
+	_local l_file << write_string(_self.class_name, "_", p_test_name, ".json")
+	_local l_output_file << system.pathname_down(l_temp_dir, l_file)
+	_return l_output_file
+_endmethod
+$
+
+
+_method json_wkt_exporter_test.test_fid_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_fid_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_physical_key_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_key_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_physical_int_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_int_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+	
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_physical_string_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_physical_string_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_geometry_point_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_point_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+	
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_geometry_chain_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_chain_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+	
+_endmethod
+$
+
+_method json_wkt_exporter_test.test_geometry_area_field_export()
+	_local l_output_file << _self.get_output_file_path(:test_geometry_area_field_export)
+
+	_local l_dataset << _self.dataset_with_test_data()
+	_local l_collection << l_dataset.collection(:test_object)
+	_self.run_json_wkt_export(l_output_file, { l_collection })
+	
+_endmethod
+$

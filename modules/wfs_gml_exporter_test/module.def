@@ -1,0 +1,25 @@
+wfs_gml_exporter_test	1
+
+description
+	Tests the wfs_gml_exporter module
+end
+
+requires
+	simple_dataset
+	munit_base
+	wfs_gml_exporter	1
+end
+
+tests_modules
+	wfs_gml_exporter
+end
+
+test
+	name		wfs_gml_exporter_test
+	topics		munit
+	framework	munit
+	args		wfs_gml_exporter_test
+end
+
+
+hidden

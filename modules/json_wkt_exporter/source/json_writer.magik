@@ -1,0 +1,278 @@
+# See http://www.json.org/ for JSON format
+
+def_slotted_exemplar(
+	:json_writer,
+	{
+		{:output_stream, _unset, :readable},
+		{:structure, _unset, :readable}
+	},
+	{})
+$
+
+json_writer.define_shared_constant(
+	:transitions,
+	set.new_with(
+		# transition table
+		# Notation (element):
+		#   1: current state/stack top
+		#   2: event name
+		#   3: action with regard to stack
+		#      push:    push new state (3)
+		#      pop:     pop current top
+		#      nop:     nothing
+		#   4: new state
+		{ _unset, :init, :push, :TOP },
+		
+		{ :TOP, :begin_object, :push, :IN_OBJECT },
+		{ :TOP, :begin_array, :push, :IN_ARRAY },
+		{ :TOP, :end, :pop, _unset },
+
+		{ :IN_OBJECT, :end_object, :pop, _unset },
+		{ :IN_OBJECT, :begin_pair, :push, :IN_PAIR },
+
+		{ :IN_PAIR, :write_value, :pop, _unset },
+		{ :IN_PAIR, :begin_object, :push, :IN_OBJECT },
+		{ :IN_PAIR, :begin_array, :push, :IN_ARRAY },
+
+		{ :IN_ARRAY, :write_value, :nop, _unset },
+		{ :IN_ARRAY, :begin_object, :push, :IN_OBJECT },
+		{ :IN_ARRAY, :begin_array, :push, :IN_ARRAY },
+		{ :IN_ARRAY, :end_array, :pop, _unset },
+
+		{ :POST_VALUE, :end_array, :pop, _unset }
+	    ),
+	:private)
+$
+
+_pragma(classify_level=basic, topic={json_writer})
+_method json_writer.new(p_stream)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_return _clone.init(p_stream)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_private _method json_writer.init(p_stream)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	.output_stream << p_stream
+	.structure << stack.new()
+	_self.transition(:init)
+	_return _self
+_endmethod
+$
+
+_private _method json_writer.transition(p_event_name)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	show(p_event_name)
+	_local l_state << _self.current_state
+	_local l_found? << _false
+	_for i_transition _over _self.transitions.fast_elements()
+	_loop
+		_if l_state _is i_transition[1] _andif
+		    p_event_name _is i_transition[2]
+		_then
+			_local l_action << i_transition[3]
+			_local l_new_state << i_transition[4]
+			_if l_action _is :push
+			_then
+				.structure.add({ l_new_state, _false })
+			_elif l_action _is :pop
+			_then
+				.structure.pop()
+			_elif l_action _is :nop
+			_then
+				# nop
+				_self.set_comma_pending()
+			_endif
+			 
+			l_found? << _true
+		_endif
+
+		# XXX: HACK: ..., :IN_PAIR, :IN_OBJECT with :end_object gives
+		# troubles, fix it by popping the :IN_PAIR as well
+		_if _self.current_state _is :IN_PAIR _andif
+		    p_event_name _is :end_object
+		_then
+			.structure.pop()
+		_endif
+	_endloop
+	 
+	_if _not l_found?
+	_then
+		condition.raise(:user_error, :string, write_string("Cannot perform call ", p_event_name, " in state ", l_state))
+	_endif
+
+	_for i_s _over _self.structure.fast_elements()
+	_loop
+		print(i_s)
+	_endloop
+_endmethod
+$
+
+_private _method json_writer.current_state
+	_local l_top << .structure.an_element() # top of stck
+	_if l_top _is _unset
+	_then
+		_return _unset
+	_endif
+	_return l_top[1]
+_endmethod
+$
+
+_private _method json_writer.comma_pending?
+	_local l_top << .structure.an_element() # top of stack
+	_return l_top[2]
+_endmethod
+$
+
+_private _method json_writer.set_comma_pending(_optional p_pending?)
+	_local l_top << .structure.an_element() # top of stack
+	l_top[2] << p_pending?.default(_true)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.begin_object()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_if _self.comma_pending?
+	_then
+		_self.output_stream.write(",")
+		_self.set_comma_pending(_false)
+	_endif
+	_self.transition(:begin_object)
+	_self.output_stream.write("{")
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.end_object()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.transition(:end_object)
+	_self.output_stream.write("}")
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.begin_array()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_if _self.comma_pending?
+	_then
+		_self.output_stream.write(",")
+		_self.set_comma_pending(_false)
+	_endif
+	_self.transition(:begin_array)
+	_self.output_stream.write("[")
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.end_array()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.set_comma_pending()
+	_self.transition(:end_array)
+	_self.output_stream.write("]")
+_endmethod
+$
+
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.begin_pair(p_name)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_if _self.comma_pending?
+	_then
+		_self.output_stream.write(",")
+		_self.set_comma_pending(_false)
+	_endif
+	_self.transition(:begin_pair)
+	
+	_local l_string << write_string(%", p_name, %", ": ")
+	_self.output_stream.write(l_string)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.write_value(p_value)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.transition(:write_value)
+	 
+	_local l_string << ""
+	_if p_value _is _true
+	_then
+		l_string << "true"
+	_elif p_value _is _false
+	_then
+		l_string << "false"
+	_elif p_value _is _unset
+	_then
+		l_string << "null"
+	_elif p_value.is_kind_of?(integer) _orif
+	      p_value.is_kind_of?(float)
+	_then
+		l_string << p_value
+	_else
+		l_string << write_string(%", p_value, %")
+	_endif
+	_self.output_stream.write(l_string)
+	_self.set_comma_pending()
+_endmethod
+$
+
+
+_pragma(classify_level=restricted, topic={json_writer})
+_method json_writer.close()
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.transition(:end)
+	
+	_self.output_stream.close()
+_endmethod
+$

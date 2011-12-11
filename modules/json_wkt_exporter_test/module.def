@@ -1,0 +1,25 @@
+json_wkt_exporter_test	1
+
+description
+	Tests the json_wkt_exporter module
+end
+
+requires
+	simple_dataset
+	munit_base
+	json_wkt_exporter	1
+end
+
+tests_modules
+	json_wkt_exporter
+end
+
+test
+	name		json_wkt_exporter_test
+	topics		munit
+	framework	munit
+	args		json_wkt_exporter_test
+end
+
+
+hidden
