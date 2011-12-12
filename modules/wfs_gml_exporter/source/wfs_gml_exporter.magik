@@ -35,7 +35,8 @@ _private _method wfs_gml_exporter.init(p_filename, p_collections, p_source_coord
 	.xml_namespaces << hash_table.new_with(
 				   :gml, "http://www.opengis.net/gml",
 				   :wfs, "http://www.opengis.net/wfs",
-				   :ogc, "http://www.opengis.net/ogc"
+				   :ogc, "http://www.opengis.net/ogc",
+				   :xlink, "http://www.w3.org/1999/xlink"
 				      )
 	_return _self
 _endmethod
@@ -160,8 +161,10 @@ _private _method wfs_gml_exporter.export_field(p_record, p_field)
 	_elif p_field.is_physical?
 	_then
 		_self.export_physical_field(p_field, l_field_value)
+	_elif p_field.is_join?
+	_then
+		_self.export_join_field(p_field, l_field_valu)
 	_endif
-	# XXX: TODO: is_join?
 	# XXX: TODO: is_derived?
 _endmethod
 $
@@ -190,6 +193,29 @@ _private _method wfs_gml_exporter.export_physical_field(p_field, p_field_value)
 	## Post            : -
 	_self.xml_output_stream.start_element(p_field.name)
 	_self.xml_output_stream.write_cdata(write_string(p_field_value))
+	_self.xml_output_stream.end_element() # field.name
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_join_field(p_field, p_field_value)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.xml_output_stream.start_element(p_field.name)
+
+	# XXX: TODO
+	_local l_join_type << p_field.join_type
+	_if l_join_type _is :follow
+	_then
+		# write xlink thingie
+	_elif l_join_type _isnt :follow 
+			
+	_endif
+	
 	_self.xml_output_stream.end_element() # field.name
 _endmethod
 $

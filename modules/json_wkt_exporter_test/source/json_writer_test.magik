@@ -17,17 +17,17 @@ $
 
 _method json_writer_test.test_empty_json()
 	_local l_stream << internal_text_output_stream.new()
-	_local l_json << json_writer.new(l_stream)
+	_local l_json_writer << json_writer.new(l_stream)
 
-	_self.assert_raised_condition(:user_error, l_json, :close|()|)
+	_self.assert_raised_condition(:user_error, l_json_writer, :close|()|)
 _endmethod
 $
 
 _method json_writer_test.test_object_empty()
 	_local l_stream << internal_text_output_stream.new()
-	_local l_json << json_writer.new(l_stream)
-	l_json.begin_object()
-	l_json.end_object()
+	_local l_json_writer << json_writer.new(l_stream)
+	l_json_writer.begin_object()
+	l_json_writer.end_object()
 
 	_self.assert_equals("{}", l_stream.string)
 _endmethod
@@ -35,9 +35,9 @@ $
 
 _method json_writer_test.test_array_empty()
 	_local l_stream << internal_text_output_stream.new()
-	_local l_json << json_writer.new(l_stream)
-	l_json.begin_array()
-	l_json.end_array()
+	_local l_json_writer << json_writer.new(l_stream)
+	l_json_writer.begin_array()
+	l_json_writer.end_array()
 
 	_self.assert_equals("[]", l_stream.string)
 _endmethod
@@ -45,7 +45,7 @@ $
 
 _method json_writer_test.test_array_single_element()
 	_local l_stream << internal_text_output_stream.new()
-	_local l_json << json_writer.new(l_stream)
+	_local l_json_writer << json_writer.new(l_stream)
 
 	l_json_writer.begin_array()
 	l_json_writer.write_value(:value1)
@@ -63,7 +63,7 @@ $
 
 _method json_writer_test.test_array_double_element()
 	_local l_stream << internal_text_output_stream.new()
-	_local l_json << json_writer.new(l_stream)
+	_local l_json_writer << json_writer.new(l_stream)
 
 	l_json_writer.begin_array()
 	l_json_writer.write_value(:value1)
@@ -73,7 +73,7 @@ _method json_writer_test.test_array_double_element()
 
 	_local l_expected << write_string(
 				     "[",
-				     '"', "value1", '"', ","
+				     '"', "value1", '"', ",",
 				      '"', "value2", '"',
 				       "]"
 			     )
@@ -103,8 +103,8 @@ _method json_writer_test.test_complex_1()
 	l_json_writer.end_object()
 	l_json_writer.close()
 
-	_local l_expected << write_string("{"
-					  '"', "pair1", '"', ": 1,"
+	_local l_expected << write_string("{",
+					  '"', "pair1", '"', ": 1,",
 					   '"', "pair2", '"', ": 2,",
 					    '"', "obj1", '"', ": ",
 					     "{", '"', "pair3", '"', ": 3}",
@@ -113,8 +113,6 @@ _method json_writer_test.test_complex_1()
 	_self.assert_equals(l_expected, l_stream.string)
 _endmethod
 $
-
-
 
 _method json_writer_test.test_nested_array_1()
 	_local l_stream << internal_text_output_stream.new()

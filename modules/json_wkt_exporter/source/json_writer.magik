@@ -78,7 +78,6 @@ _private _method json_writer.transition(p_event_name)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	show(p_event_name)
 	_local l_state << _self.current_state
 	_local l_found? << _false
 	_for i_transition _over _self.transitions.fast_elements()
@@ -116,16 +115,11 @@ _private _method json_writer.transition(p_event_name)
 	_then
 		condition.raise(:user_error, :string, write_string("Cannot perform call ", p_event_name, " in state ", l_state))
 	_endif
-
-	_for i_s _over _self.structure.fast_elements()
-	_loop
-		print(i_s)
-	_endloop
 _endmethod
 $
 
 _private _method json_writer.current_state
-	_local l_top << .structure.an_element() # top of stck
+	_local l_top << .structure.an_element() # top of stack
 	_if l_top _is _unset
 	_then
 		_return _unset
@@ -136,12 +130,20 @@ $
 
 _private _method json_writer.comma_pending?
 	_local l_top << .structure.an_element() # top of stack
+	_if l_top _is _unset
+	_then
+		_return _unset
+	_endif
 	_return l_top[2]
 _endmethod
 $
 
 _private _method json_writer.set_comma_pending(_optional p_pending?)
 	_local l_top << .structure.an_element() # top of stack
+	_if l_top _is _unset
+	_then
+		_return
+	_endif
 	l_top[2] << p_pending?.default(_true)
 _endmethod
 $
@@ -173,6 +175,7 @@ _method json_writer.end_object()
 	## Function        : -
 	## Post            : -
 	_self.transition(:end_object)
+	_self.set_comma_pending()
 	_self.output_stream.write("}")
 _endmethod
 $
@@ -203,8 +206,8 @@ _method json_writer.end_array()
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.set_comma_pending()
 	_self.transition(:end_array)
+	_self.set_comma_pending()
 	_self.output_stream.write("]")
 _endmethod
 $
@@ -238,8 +241,15 @@ _method json_writer.write_value(p_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
+	_if _self.comma_pending?
+	_then
+		_self.output_stream.write(",")
+		_self.set_comma_pending(_false)
+	_endif
+	
 	_self.transition(:write_value)
-	 
+	_self.set_comma_pending()
+	
 	_local l_string << ""
 	_if p_value _is _true
 	_then
@@ -258,10 +268,8 @@ _method json_writer.write_value(p_value)
 		l_string << write_string(%", p_value, %")
 	_endif
 	_self.output_stream.write(l_string)
-	_self.set_comma_pending()
 _endmethod
 $
-
 
 _pragma(classify_level=restricted, topic={json_writer})
 _method json_writer.close()

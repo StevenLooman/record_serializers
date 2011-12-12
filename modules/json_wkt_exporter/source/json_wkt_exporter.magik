@@ -1,10 +1,8 @@
-# See http://www.json.org/ for JSON format
-
 def_slotted_exemplar(
 	:json_wkt_exporter,
 	{
 		{:collections, _unset, :readable},
-		{:json_output_stream, _unset, :readable},
+		{:json_writer, _unset, :readable},
 		{:wkt_serializer, _unset, :readable},
 		{:comma_pending?, _false, :readable}
 	},
@@ -31,7 +29,7 @@ _private _method json_wkt_exporter.init(p_filename, p_collections, p_source_coor
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	.json_output_stream << json_output_stream.new(p_filename)
+	.json_writer << json_writer.new(p_filename)
 	.collections << p_collections
 	.wkt_serializer << wkt_serializer.new(p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	_return _self
@@ -48,16 +46,16 @@ _method json_wkt_exporter.run()
 	## Post            : -
 	_dynamic !print_float_precision! << 10
 
-	_self.json_output_stream.json_start_object()
+	_self.json_writer.json_start_object()
 	_for i_collection _over .collections.fast_elements()
 	_loop
-		_self.json_output_stream.json_start_element(i_collection.name)
-		_self.json_output_stream.json_start_array()
+		_self.json_writer.json_start_element(i_collection.name)
+		_self.json_writer.json_start_array()
 		_self.export_collection(i_collection)
-		_self.json_output_stream.json_end_array()
-		_self.json_output_stream.json_end_element() # i_collection.name
+		_self.json_writer.json_end_array()
+		_self.json_writer.json_end_element() # i_collection.name
 	_endloop
-	_self.json_output_stream.json_end_object()
+	_self.json_writer.json_end_object()
 _endmethod
 $
 
@@ -76,12 +74,12 @@ _private _method json_wkt_exporter.export_collection(p_collection)
 		_local l_source_collection_name << l_source_collection.name
 		_local l_record_id << _self.key_value_as_string(i_record)
 
-		_self.json_output_stream.json_start_object()
+		_self.json_writer.begin_object()
 		_for i_field _over i_record.visible_fields.fast_elements()
 		_loop
 			_self.export_field(i_record, i_field)
 		_endloop
-		_self.json_output_stream.json_end_object()
+		_self.json_writer.end_object()
 	_endloop
 _endmethod
 $
@@ -141,10 +139,9 @@ _private _method json_wkt_exporter.export_geometry_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.json_output_stream.json_start_element(p_field.name)
+	_self.json_writer.begin_pair(p_field.name)
 	_local l_wkt_string << _self.wkt_serializer.export_geometry(p_field_value)
-	_self.json_output_stream.json_write_value(l_wkt_string)
-	_self.json_output_stream.json_end_element()
+	_self.json_writer.write_value(l_wkt_string)
 _endmethod
 $
 
@@ -156,8 +153,7 @@ _private _method json_wkt_exporter.export_physical_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.json_output_stream.json_start_element(p_field.name)
-	_self.json_output_stream.json_write_value(p_field_value)
-	_self.json_output_stream.json_end_element()
+	_self.json_writer.begin_pair(p_field.name)
+	_self.json_writer.write_value(p_field_value)
 _endmethod
 $
