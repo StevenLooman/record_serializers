@@ -5,5 +5,5 @@ description
 end
 
 requires
-	geometry_wkt_serialization	1
+	geometry_wkt_serializer	1
 end

@@ -213,6 +213,7 @@ _private _method wfs_gml_exporter.export_join_field(p_field, p_field_value)
 	_then
 		# write xlink thingie
 	_elif l_join_type _isnt :follow 
+	_then
 			
 	_endif
 	

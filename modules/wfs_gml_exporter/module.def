@@ -5,5 +5,5 @@ description
 end
 
 requires
-	geometry_gml_serialization	1
+	geometry_gml_serializer	1
 end
