@@ -177,7 +177,7 @@ _private _method wfs_gml_exporter.export_geometry_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.xml_output_stream.start_element(p_field.name)
+	_self.xml_output_stream.start_element(p_field.name.substitute_string("?", ""))
 	_self.gml_serializer.export_geometry(p_field_value)
 	_self.xml_output_stream.end_element() # field.name
 _endmethod
@@ -191,7 +191,7 @@ _private _method wfs_gml_exporter.export_physical_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.xml_output_stream.start_element(p_field.name)
+	_self.xml_output_stream.start_element(p_field.name.substitute_string("?", ""))
 	_self.xml_output_stream.write_cdata(write_string(p_field_value))
 	_self.xml_output_stream.end_element() # field.name
 _endmethod
@@ -205,16 +205,16 @@ _private _method wfs_gml_exporter.export_join_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.xml_output_stream.start_element(p_field.name)
+	_self.xml_output_stream.start_element(p_field.name.substitute_string("?", ""))
 
 	# XXX: TODO
 	_local l_join_type << p_field.join_type
 	_if l_join_type _is :follow
 	_then
 		# write xlink thingie
-	_elif l_join_type _isnt :follow 
+	_elif l_join_type _isnt :follow
 	_then
-			
+		
 	_endif
 	
 	_self.xml_output_stream.end_element() # field.name
