@@ -139,7 +139,7 @@ _private _method json_wkt_exporter.export_geometry_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.json_writer.begin_pair(p_field.name)
+	_self.json_writer.begin_pair(p_field.name.substitute_string("?", ""))
 	_local l_wkt_string << _self.wkt_serializer.export_geometry(p_field_value)
 	_self.json_writer.write_value(l_wkt_string)
 _endmethod
@@ -153,7 +153,7 @@ _private _method json_wkt_exporter.export_physical_field(p_field, p_field_value)
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_self.json_writer.begin_pair(p_field.name)
+	_self.json_writer.begin_pair(p_field.name.substitute_string("?", ""))
 	_self.json_writer.write_value(p_field_value)
 _endmethod
 $
