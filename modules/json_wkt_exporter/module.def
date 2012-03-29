@@ -5,5 +5,6 @@ description
 end
 
 requires
+	json	1
 	geometry_wkt_serializer	1
 end

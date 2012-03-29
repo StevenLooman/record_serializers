@@ -1,0 +1,25 @@
+geometry_geojson_serializer_test	1
+
+description
+	Tests the geometry_geojson_serializer module
+end
+
+requires
+	simple_dataset
+	munit_base
+	geometry_geojson_serializer	1
+end
+
+tests_modules
+	geometry_geojson_serializer
+end
+
+test
+	name		geometry_geojson_serializer_test
+	topics		munit
+	framework	munit
+	args		geometry_geojson_serializer_test
+end
+
+
+hidden

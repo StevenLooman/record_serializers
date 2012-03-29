@@ -1,0 +1,9 @@
+geometry_geojson_serializer	1
+
+description
+	Serializer for Smallworld geometry objects to GeoJSON
+end
+
+requires
+	json	1
+end

@@ -1,0 +1,25 @@
+json_test	1
+
+description
+	Tests the json module
+end
+
+requires
+	simple_dataset
+	munit_base
+	json	1
+end
+
+tests_modules
+	json
+end
+
+test
+	name		json
+	topics		munit
+	framework	munit
+	args		json
+end
+
+
+hidden
