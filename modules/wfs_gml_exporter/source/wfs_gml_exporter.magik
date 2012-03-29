@@ -10,26 +10,26 @@ def_slotted_exemplar(
 $
 
 _pragma(classify_level=basic, topic={wfs_gml_exporter})
-_method wfs_gml_exporter.new(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_method wfs_gml_exporter.new(p_out_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	#  Initial Author  : steven.looman, Date : 2011-11-21
 	## Parameters      : -
 	## Returns         : -
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_return _clone.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	_return _clone.init(p_out_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 _endmethod
 $
 
 _pragma(classify_level=restricted, topic={wfs_gml_exporter})
-_private _method wfs_gml_exporter.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_private _method wfs_gml_exporter.init(p_out_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	#  Initial Author  : steven.looman, Date : 2011-11-21
 	## Parameters      : -
 	## Returns         : -
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	.xml_output_stream << xml_output_stream.new_file(p_filename)
+	.xml_output_stream << xml_output_stream.new(p_out_stream)
 	.collections << p_collections
 	.gml_serializer << gml_serializer.new(_self.xml_output_stream, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	.xml_namespaces << hash_table.new_with(
@@ -163,9 +163,11 @@ _private _method wfs_gml_exporter.export_field(p_record, p_field)
 		_self.export_physical_field(p_field, l_field_value)
 	_elif p_field.is_join?
 	_then
-		_self.export_join_field(p_field, l_field_valu)
+		_self.export_join_field(p_field, l_field_value)
+	_elif p_field.is_derived?
+	_then
+		_self.export_derived_field(p_field, l_field_value)
 	_endif
-	# XXX: TODO: is_derived?
 _endmethod
 $
 
@@ -217,6 +219,20 @@ _private _method wfs_gml_exporter.export_join_field(p_field, p_field_value)
 		
 	_endif
 	
+	_self.xml_output_stream.end_element() # field.name
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={wfs_gml_exporter})
+_private _method wfs_gml_exporter.export_derived_field(p_field, p_field_value)
+	#  Initial Author  : steven.looman, Date : 2012-03-29
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.xml_output_stream.start_element(p_field.name.substitute_string("?", "").substitute_string("!", "_"))
+	_self.xml_output_stream.write_cdata(write_string(p_field_value))
 	_self.xml_output_stream.end_element() # field.name
 _endmethod
 $

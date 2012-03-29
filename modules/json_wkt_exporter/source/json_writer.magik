@@ -105,7 +105,7 @@ _private _method json_writer.transition(p_event_name)
 		# XXX: HACK: ..., :IN_PAIR, :IN_OBJECT with :end_object gives
 		# troubles, fix it by popping the :IN_PAIR as well
 		_if _self.current_state _is :IN_PAIR _andif
-		    p_event_name _is :end_object
+		    (p_event_name _is :end_object _orif p_event_name _is :end_array)
 		_then
 			.structure.pop()
 		_endif

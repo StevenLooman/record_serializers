@@ -4,7 +4,9 @@ $
 
 def_slotted_exemplar(
 	:wfs_gml_exporter_test,
-	{},
+	{
+		{ :out_stream, _unset }
+	},
 	{
 		:test_case
 	})
@@ -63,27 +65,16 @@ _private _method wfs_gml_exporter_test.dataset_with_test_data()
 _endmethod
 $
 
-_private _method wfs_gml_exporter_test.run_gml_export(p_output_file, p_collections, _optional p_source_cs, p_dest_cs, p_epsg_id)
+_private _method wfs_gml_exporter_test.run_gml_export(p_collections, _optional p_source_cs, p_dest_cs, p_epsg_id)
 	_local l_source_cs << p_source_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
 	_local l_dest_cs << p_dest_cs.default(coordinate_system.new_proj_long_lat(:wgs84, :degree))
 	_local l_epsg_id << p_epsg_id.default(4326)
 	
-	_local l_exporter << wfs_gml_exporter.new(p_output_file, p_collections, l_source_cs, l_dest_cs, l_epsg_id)
-	_protect
-		l_exporter.run()
-	_protection
-		l_exporter.sys!slot(:xml_output_stream).close() # end gracefully
-	_endprotect
+	_local l_exporter << wfs_gml_exporter.new(.out_stream, p_collections, l_source_cs, l_dest_cs, l_epsg_id)
+	l_exporter.run()
 _endmethod
 $
 
-_private _method wfs_gml_exporter_test.get_output_file_path(p_test_name)
-	_local l_temp_dir << system.getenv("TEMP")
-	_local l_file << write_string(_self.class_name, "_", p_test_name, ".gml")
-	_local l_output_file << system.pathname_down(l_temp_dir, l_file)
-	_return l_output_file
-_endmethod
-$
 
 _private _iter _method wfs_gml_exporter_test.record_elements(p_xml)
 	_local l_root_element << p_xml.elements[1]
@@ -109,14 +100,26 @@ _private _iter _method wfs_gml_exporter_test.field_elements_of_record(p_xml, p_r
 _endmethod
 $
 
-_method wfs_gml_exporter_test.test_fid_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_fid_field_export)
+_method wfs_gml_exporter_test.set_up()
+	.out_stream << internal_text_output_stream.new()
+_endmethod
+$
 
+_method wfs_gml_exporter_test.tear_down()
+	_if .out_stream _isnt _unset
+	_then
+		.out_stream.close()
+	_endif
+_endmethod
+$
+
+
+_method wfs_gml_exporter_test.test_fid_field_export()
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_for i_record_element _over _self.record_elements(l_xml)
 	_loop
 		_local l_attributes << i_record_element.attributes
@@ -126,13 +129,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_physical_key_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_physical_key_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop
@@ -151,13 +152,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_physical_int_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_physical_int_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop
@@ -179,13 +178,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_physical_string_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_physical_string_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop
@@ -204,13 +201,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_geometry_point_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_geometry_point_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop
@@ -227,13 +222,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_geometry_chain_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_geometry_chain_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop
@@ -250,13 +243,11 @@ _endmethod
 $
 
 _method wfs_gml_exporter_test.test_geometry_area_field_export()
-	_local l_output_file << _self.get_output_file_path(:test_geometry_area_field_export)
-
 	_local l_dataset << _self.dataset_with_test_data()
 	_local l_collection << l_dataset.collection(:test_object)
-	_self.run_gml_export(l_output_file, { l_collection })
+	_self.run_gml_export({ l_collection })
 	
-	_local l_xml << simple_xml.read_document_file(l_output_file)
+	_local l_xml << simple_xml.read_document_string(.out_stream.string)
 	_local l_field_found? << _false
 	_for i_field_element _over _self.field_elements_of_record(l_xml, :test_object)
 	_loop

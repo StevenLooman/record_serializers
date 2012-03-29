@@ -10,26 +10,26 @@ def_slotted_exemplar(
 $
 
 _pragma(classify_level=basic, topic={json_wkt_exporter})
-_method json_wkt_exporter.new(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_method json_wkt_exporter.new(p_output_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	#  Initial Author  : steven.looman, Date : 2011-11-21
 	## Parameters      : -
 	## Returns         : -
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	_return _clone.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+	_return _clone.init(p_output_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 _endmethod
 $
 
 _pragma(classify_level=restricted, topic={json_wkt_exporter})
-_private _method json_wkt_exporter.init(p_filename, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
+_private _method json_wkt_exporter.init(p_output_stream, p_collections, p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	#  Initial Author  : steven.looman, Date : 2011-11-21
 	## Parameters      : -
 	## Returns         : -
 	## Pre             : -
 	## Function        : -
 	## Post            : -
-	.json_writer << json_writer.new(p_filename)
+	.json_writer << json_writer.new(p_output_stream)
 	.collections << p_collections
 	.wkt_serializer << wkt_serializer.new(p_source_coordinate_system, p_target_coordinate_system, p_epsg_number)
 	_return _self
@@ -46,16 +46,15 @@ _method json_wkt_exporter.run()
 	## Post            : -
 	_dynamic !print_float_precision! << 10
 
-	_self.json_writer.json_start_object()
+	_self.json_writer.begin_object()
 	_for i_collection _over .collections.fast_elements()
 	_loop
-		_self.json_writer.json_start_element(i_collection.name)
-		_self.json_writer.json_start_array()
+		_self.json_writer.begin_pair(i_collection.name)
+		_self.json_writer.begin_array()
 		_self.export_collection(i_collection)
-		_self.json_writer.json_end_array()
-		_self.json_writer.json_end_element() # i_collection.name
+		_self.json_writer.end_array()
 	_endloop
-	_self.json_writer.json_end_object()
+	_self.json_writer.end_object()
 _endmethod
 $
 
@@ -125,9 +124,11 @@ _private _method json_wkt_exporter.export_field(p_record, p_field)
 	_elif p_field.is_physical?
 	_then
 		_self.export_physical_field(p_field, l_field_value)
+	_elif p_field.is_derived?
+	_then
+		_self.export_derived_field(p_field, l_field_value)
 	_endif
 	# XXX: TODO: is_join?
-	# XXX: TODO: is_derived?
 _endmethod
 $
 
@@ -147,6 +148,19 @@ $
 
 _pragma(classify_level=restricted, topic={json_wkt_exporter})
 _private _method json_wkt_exporter.export_physical_field(p_field, p_field_value)
+	#  Initial Author  : steven.looman, Date : 2011-11-21
+	## Parameters      : -
+	## Returns         : -
+	## Pre             : -
+	## Function        : -
+	## Post            : -
+	_self.json_writer.begin_pair(p_field.name.substitute_string("?", ""))
+	_self.json_writer.write_value(p_field_value)
+_endmethod
+$
+
+_pragma(classify_level=restricted, topic={json_wkt_exporter})
+_private _method json_wkt_exporter.export_derived_field(p_field, p_field_value)
 	#  Initial Author  : steven.looman, Date : 2011-11-21
 	## Parameters      : -
 	## Returns         : -
