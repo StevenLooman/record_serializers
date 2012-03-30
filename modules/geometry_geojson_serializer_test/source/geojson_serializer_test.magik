@@ -75,7 +75,7 @@ _method geojson_serializer_test.test_geometry_point_field_export()
 	
 	_local l_result << l_serializer.export_geometry(l_point_geom)
 	
-	_self.assert_equals(l_result, "{"type": "Point","coordinates": [0.000,0.000]}")
+	_self.assert_equals(l_result, write_string("{", %", "type", %", ": ", %", "Point", %", ",", %", "coordinates", %", ": [0.000,0.000]}"))
 _endmethod
 $
 
@@ -90,7 +90,7 @@ _method geojson_serializer_test.test_geometry_chain_field_export()
 	
 	_local l_result << l_serializer.export_geometry(l_chain_geom)
 	
-	_self.assert_equals(l_result, "{"type": "LineString","coordinates": [[0.000,0.000],[1.000,1.000]]}")
+	_self.assert_equals(l_result, write_string("{", %", "type", %", ": ", %", "LineString", %", ",", %", "coordinates", %", ": [[0.000,0.000],[1.000,1.000]]}"))
 _endmethod
 $
 
@@ -105,6 +105,6 @@ _method geojson_serializer_test.test_geometry_area_field_export()
 	
 	_local l_result << l_serializer.export_geometry(l_area_geom)
 	
-	_self.assert_equals(l_result, {"type": "Polygon","coordinates": [[[-1.000,-1.000],[-1.000,1.000],[0.000,2.000],[2.000,2.000],[2.000,0.000],[1.000,-1.000],[-1.000,-1.000]]]})
+	_self.assert_equals(l_result, write_string("{", %", "type", %", ": ", %", "Polygon", %", ",", %", "coordinates", %", ": [[[-1.000,-1.000],[-1.000,1.000],[0.000,2.000],[2.000,2.000],[2.000,0.000],[1.000,-1.000],[-1.000,-1.000]]]}"))
 _endmethod
 $
